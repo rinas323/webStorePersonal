@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh; 
+            margin: 0;
+            background: linear-gradient(45deg, #ff7e5f, #feb47b);
+        }
+        .login {
+            display: grid;
+            place-items: center;
+            row-gap: 5px;
+            background-color: rgba(255, 255, 255, 0.8);
+            width: 30vw;
+            height: 35vh;
+            border-radius: 10px;
+            box-shadow: 5px 10px 15px 5px rgba(0, 0, 0, 0.3);
+        }
+        .login h2, .login h6, .login input {
+            margin: 0;
+        }
+        .button input {
+            background: rgb(45, 138, 84);
+            border-radius: 10px;
+        }
+        .button {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            margin: 10px;
+        }
+    </style>
+
+    <!-- Firebase SDKs in Compatibility Mode -->
+    <script src="https://www.gstatic.com/firebasejs/9.21.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.21.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    <div class="login">
+        <div><h2>Login</h2></div><h3>
+        <div><h6>Username</h6></div>
+        <div><input type="text" id="username"></div>
+        <div><h6>Password</h6></div>
+        <div><input type="password" id="password"></div>
+        <div class="button"><input type="button" value="Log in" onclick="validateForm()"></div>
+    </div>
+
+    <script>
+        
+        const firebaseConfig = {
+            apiKey:"AIzaSyDAjqlpuRfkT0hVRoQzMHTHa-mnZ-O4O1o",
+            authDomain: "website-personal-bbfa7.firebaseapp.com",
+            projectId: "website-personal-bbfa7",
+            storageBucket: "website-personal-bbfa7.appspot.com",
+            messagingSenderId: "966098818276",
+            appId: "1:966098818276:web:0a6835286f0e6f721448f1",
+            measurementId: "G-E1KHWNCLX8"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Function to validate form and check credentials
+        async function validateForm() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            const passwordRegex = /^(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{8,}$/;
+
+            if (!username || !password) {
+                alert('Username and password are required.');
+                return;
+            }
+
+            if (!passwordRegex.test(password)) {
+                alert('Password must be at least 8 characters long, contain at least one uppercase letter and one number.');
+                return;
+            }
+
+            try {
+                const usersRef = db.collection('users');
+                const querySnapshot = await usersRef
+                    .where("username", "==", username)
+                    .where("password", "==", password)
+                    .get();
+
+                if (!querySnapshot.empty) {
+                sessionStorage.setItem('loggedIn',true);
+                    window.location.href = "index.html"; 
+                } else {
+                    alert("Wrong username or password.");
+                }
+            } catch (error) {
+                
+                alert("Login failed due to a system error.");
+            }
+        }
+    </script>
+</body>
+</html>

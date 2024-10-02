@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script>
+        // Check if user is logged in
+        if (!sessionStorage.getItem('loggedIn')) {
+            // If not logged in, redirect to login page
+            window.location.href = "login.html";
+        }
+    </script>
+    <style>
+        body {
+            background: linear-gradient(to right, #6492a1, #7bc9e3);
+            font-family: Arial, sans-serif;
+        }
+        .upload {
+            height: 50px;
+            width: 50px;
+            margin-bottom: 20px; /* Add some space below the upload section */
+            display: flex; /* Use flexbox for better alignment */
+            align-items: center;
+             
+        }
+        .upload input[type="file"] {
+            display: none; /* Hide the default file input */
+        }
+        .upload input[type="button"] {
+            border-radius: 10px;
+            background-color: #31b58d; /* Matching header color */
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-right: 10px;
+            
+        }
+        .upload input[type="button"]:hover {
+            background-color: #28a745; /* Darker green on hover */
+        }
+        .message {
+            display: none; /* Hidden by default */
+            background-color: #e0f7fa;
+            border: 1px solid #31b58d;
+            border-radius: 10px;
+            padding: 10px;
+            margin-top: 10px;
+            width: fit-content; /* Fit to the content */
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .files table {
+            width: 50%;
+            border: 2px groove #2f4f4f;
+            border-collapse: collapse;
+            background-color: rgba(255, 255, 255, 0.9);
+            box-shadow: inset 5px 5px 10px rgba(0, 0, 0, 0.2), 
+                        inset -5px -5px 10px rgba(255, 255, 255, 0.5), 
+                        5px 10px 15px 5px rgba(0, 0, 0, 0.3);
+            
+        }
+        th, td {
+            border: 2px inset #2f4f4f; /* Inset borders for inner carving */
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #31b58d;
+            box-shadow: inset 2px 2px 4px rgba(0, 0, 0, 0.2), 
+                        inset -2px -2px 4px rgba(255, 255, 255, 0.5);
+        }
+        .upload input{
+            box-shadow: inset 5px 5px 10px rgba(0, 0, 0, 0.2), 
+                        inset -5px -5px 10px rgba(255, 255, 255, 0.5), 
+                        5px 10px 15px 5px rgba(0, 0, 0, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="upload">
+        <input type="file" id="fileInput" onchange="fileSelected()">
+        <input type="button" value="Choose File" onclick="document.getElementById('fileInput').click();">
+        <input type="button" value="Upload" onclick="uploadFile()">
+    </div>
+    <div class="message" id="fileMessage">You have selected a file!</div> <!-- Message box -->
+    
+    <div class="files">
+        <table>
+            <thead>
+                <tr>
+                    <th>Index</th>
+                    <th>File Name</th>
+                    <th>Download</th>
+                    <th>Delete</th>
+                </tr>
+            </thead>
+            <tbody id="fileTableBody">
+                <!-- Rows will be dynamically added here -->
+            </tbody>
+        </table>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.21.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.21.0/firebase-storage-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.21.0/firebase-firestore-compat.js"></script>
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDAjqlpuRfkT0hVRoQzMHTHa-mnZ-O4O1o",
+            authDomain: "website-personal-bbfa7.firebaseapp.com",
+            projectId: "website-personal-bbfa7",
+            storageBucket: "website-personal-bbfa7.appspot.com",
+            messagingSenderId: "966098818276",
+            appId: "1:966098818276:web:0a6835286f0e6f721448f1",
+            measurementId: "G-E1KHWNCLX8"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const storage = firebase.storage();
+        const db = firebase.firestore();
+
+       
+        // Function to upload a file
+        async function uploadFile() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                alert('Please select a file first.');
+                return;
+            }
+
+            const storageRef = storage.ref(`uploads/${file.name}`);
+            const uploadTask = storageRef.put(file);
+
+            uploadTask.on('state_changed', 
+                (snapshot) => {
+                    // Optional: Progress feedback can be added here
+                },
+                (error) => {
+                    alert('Upload failed. Please try again.');
+                    console.error(error);
+                },
+                async () => {
+                    // Once file is uploaded, get the download URL
+                    const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
+
+                    // Save file metadata in Firestore
+                    await db.collection('files').add({
+                        name: file.name,
+                        url: downloadURL,
+                        size: file.size,
+                        contentType: file.type,
+                        uploadedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+
+                    alert('File uploaded successfully!');
+                    fetchFiles();
+                    
+                }
+            );
+        }
+        // Function to show the selected file name when a file is chosen
+function fileSelected() {
+    const fileInput = document.getElementById('fileInput');
+    const fileMessage = document.getElementById('fileMessage');
+    const file = fileInput.files[0];
+
+    if (file) {
+        fileMessage.textContent = `You have selected: ${file.name}`; // Update the message with the file name
+        fileMessage.style.display = 'block'; // Show the message box
+    } else {
+        fileMessage.style.display = 'none'; // Hide if no file is selected
+    }
+}
+
+
+        // Function to fetch files from Firestore and display them in the table
+        async function fetchFiles() {
+            const querySnapshot = await db.collection('files').get();
+            const fileTableBody = document.getElementById('fileTableBody');
+
+            // Clear existing rows
+            fileTableBody.innerHTML = '';
+
+            let index = 1;
+            querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                if (!data.name && !data.url) {
+                    return;
+                }
+                
+                // Create a new row
+                const row = document.createElement('tr');
+
+                // Create cells
+                const cell1 = document.createElement('td');
+                const cell2 = document.createElement('td');
+                const cell3 = document.createElement('td');
+                const cell4 = document.createElement('td');
+
+                // Insert index, file name, and download link
+                cell1.textContent = index++;
+                cell2.textContent = data.name;
+
+                // Create download link
+                const downloadLink = document.createElement('a');
+                downloadLink.href = data.url;
+                downloadLink.textContent = 'Download';
+                downloadLink.target = '_blank'; // Open in a new tab
+                cell3.appendChild(downloadLink);
+
+                // Create delete button
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Delete';
+                deleteButton.onclick = () => deleteFile(doc.id, data.name); // Pass file name for deletion
+                cell4.appendChild(deleteButton);
+
+                // Append cells to row
+                row.appendChild(cell1);
+                row.appendChild(cell2);
+                row.appendChild(cell3);
+                row.appendChild(cell4);
+
+                // Append row to the table body
+                fileTableBody.appendChild(row);
+            });
+        }
+
+        // Function to delete a file from Firestore and Firebase Storage
+        async function deleteFile(docId, fileName) {
+            // Delete the file from Firebase Storage
+            const storageRef = storage.ref(`uploads/${fileName}`);
+            await storageRef.delete();
+
+            // Delete the file metadata from Firestore
+            await db.collection('files').doc(docId).delete();
+
+            alert('File deleted successfully!');
+            fetchFiles();  // Refresh the table after deletion
+        }
+
+        // Fetch files when the page loads
+        window.onload = fetchFiles;
+
+    </script>
+</body>
+</html>
